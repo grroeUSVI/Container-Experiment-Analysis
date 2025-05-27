@@ -2,12 +2,222 @@
 title: "Nursery Data"
 output: html_document
 date: "2025-05-23"
+editor_options: 
+  chunk_output_type: console
 ---
 
-```{r Nursery Data}
+```{r Intake Data}
+
+library(readr)
+library(tidyverse)
+library(ggforce)#geom_sina
+
+#import data
+Intake <- read_csv("data/ContainerSetupData.csv", 
+    col_types = cols(`Mass (g)` = col_number(), 
+        `Total length (cm)` = col_number(), 
+        `Diameter (mm)` = col_number(), `Epicotyl length (cm)` = col_number(), 
+        `Tag #` = col_number(), Treatment = col_factor(levels = c("TP", 
+            "BB", "CC")), Notes = col_character()))
+View(Intake)
+
+Intake<-as.data.frame(Intake)
+str(Intake)
+
+#how many unique tag IDs
+length(unique(Intake$`Tag #`))
+#181 at intake includes NAs, remove NAs
+
+Intake<-Intake[!is.na(Intake$`Tag #`), ]
+#now we have only 180 tag numbers!
+
+#visualizing the data in all the intake columns looking for outliers/weird patterns
+hist(Intake$`Mass (g)`)
+hist(Intake$`Total length (cm)`)
+hist(Intake$`Diameter (mm)`)
+hist(Intake$`Epicotyl length (cm)`)
+
+#look at prop mass across treatments
+Plot<-Intake%>%
+  ggplot(aes(x=Treatment, y=`Mass (g)`))+
+  geom_violin()+
+  geom_sina()+
+  geom_boxplot(width=0.1, outlier.colour = "red")
+
+Plot
+
+#look at prop mass across treatments
+Plot<-Intake%>%
+  ggplot(aes(x=Treatment, y=`Total length (cm)`))+
+  geom_violin()+
+  geom_sina()+
+  geom_boxplot(width=0.1, outlier.colour = "red")
+
+Plot
+
+#look at prop mass across treatments
+Plot<-Intake%>%
+  ggplot(aes(x=Treatment, y=`Epicotyl length (cm)`))+
+  geom_violin()+
+  geom_sina()+
+  geom_boxplot(width=0.1, outlier.colour = "red")
+
+Plot
 
 
+#everything looks good, no crazy outliers, and across treatments things look mostly even for propagules at intake
+
+```
+
+
+```{r Clean Nursery Data}
+library(readr)
+library(lubridate)
+
+#input cleaned datasheet, all nursery monitoring data 
+NurseryData <- read_csv("data/NurseryMonitoring.csv")
+
+#look at the structure of the dataframe and make some changes
+str(NurseryData)
+
+NurseryData<-as.data.frame(NurseryData)
+
+NurseryData$`Epicotyl length (cm)`<-as.numeric(NurseryData$`Epicotyl length (cm)`)
+
+NurseryData$Treatment<-as.factor(NurseryData$Treatment)
+
+NurseryData$Condition<-as.factor(NurseryData$Condition)
+
+#makes date processed a date
+NurseryData$`Date Processed`<-mdy(NurseryData$`Date Processed`)
+
+unique(NurseryData$`Monitoring Session`)
+
+#deleting prop ID 530 and 427 because of checking done above, (not an id from setup, data entry error )
+NurseryData<-NurseryData%>%
+  filter(`Propagule ID`!="530")
+
+NurseryData<-NurseryData%>%
+  filter(`Propagule ID`!="427")
+
+unique(NurseryData$`Propagule ID`)
+#we have 180! problem solved!!!!
+
+#now I'm going to ID dates where we have trees monitored more than once on the same date
+
+Counts <- NurseryData %>%
+  group_by(`Propagule ID`, `Monitoring Session`) %>%
+  tally() %>%
+  filter(n > 1)
+#this happens 530 times, I need to remove dates where this happens 
+#going to remove duplicate rows, then see how many that fixes
+
+#this will remove the rows where trees are monitored twice on the same monitoring day and have the same epi lenght (but this removes both rows, don't want to remove both, going to redo this)
+NurseryDataUnique <- NurseryData[!duplicated(NurseryData[c("Monitoring Session", "Propagule ID","Epicotyl length (cm)")]), ]
+
+#recheck my counts
+duplicates <- NurseryDataUnique %>%
+  group_by(across(c(`Propagule ID`, `Monitoring Session`))) %>%
+  tally() %>%
+  filter(n > 1)%>%
+  ungroup()
+#that takes us down to 126 times that they are counted twice in the same monitoring session
+
+unique(duplicate_rows$`Propagule ID`)
+#there are 95 different trees that were monitored twice within a monitoring session
+
+unique(duplicate_rows$`Monitoring Session`)
+#29 different monitoring sessions 
+
+# I think I am going to delete both rows for these duplicate within the monitoring session that have different epi lengths, because sometimes the lengths don't make sense and I don't have a way of knowing which is correct, have 5742 rows before doing this
+
+NurseryDataUnique <- NurseryDataUnique %>%
+  anti_join(duplicates, by = c("Monitoring Session", "Propagule ID"))
+#this removed all the duplicate rows!
+
+#check that only three treatments
+unique(NurseryData$Treatment)
+
+#look at the number monitored over time
+NumberMon<-NurseryDataUnique%>%
+  group_by(`Monitoring Session`,Treatment)%>%
+  summarise(NumMonitored=length(`Propagule ID`))%>%
+  ggplot(aes(x=`Monitoring Session`,y=NumMonitored,color=Treatment))+
+  geom_point()+
+  geom_line()
+
+NumberMon
+
+
+week10<-NurseryData%>%
+  filter(`Monitoring Session`=="10")
+
+
+#Now look at survivor ship over time and check for zombie plants
+
+NurserySurvival<-NurseryData%>%
+  filter(`Dead/Alive/Dying`=="A"|`Dead/Alive/Dying`=="DY"|`Dead/Alive/Dying`=="Dy")%>%
+  group_by(`Monitoring Session`, Treatment)%>%
+  summarise(numAlive=length(`Dead/Alive/Dying`))%>%
+  ggplot(aes(x=`Monitoring Session`, y=numAlive, color=Treatment))+
+  geom_point()+
+  geom_line()
+
+NurserySurvival
+
+#lots of jumping back and forth 
+
+```
+
+```{r Nursery Data Start Over}
+
+NurseryData <- read_csv("data/NurseryMonitoring.csv")
+
+#deleting prop ID 530 and 427 because of checking done above, (not an id from setup, data entry error )
+NurseryData<-NurseryData%>%
+  filter(`Propagule ID`!="530")
+
+NurseryData<-NurseryData%>%
+  filter(`Propagule ID`!="427")
+
+#look at the number of trees monitored for each treatment over time
+NumberMon<-NurseryData%>%
+  group_by(`Monitoring Session`,Treatment)%>%
+  summarise(NumMonitored=length(`Propagule ID`))%>%
+  ggplot(aes(x=`Monitoring Session`,y=NumMonitored,color=Treatment))+
+  geom_point()+
+  geom_line()+
+  geom_hline(yintercept = 60, linetype = "dashed", color = "black") 
+  
+
+NumberMon
+
+#look at the total number of trees monitored in each session 
+
+TotalNumberMon<-NurseryData%>%
+  group_by(`Monitoring Session`)%>%
+  summarise(AllMon=length(`Propagule ID`))%>%
+   ggplot(aes(x=`Monitoring Session`,y=AllMon))+
+  geom_point()+
+  geom_line()+
+  geom_hline(yintercept = 180, linetype = "dashed", color = "red") 
+
+TotalNumberMon
+
+
+#I want to see the whole row for the times when trees were monitored twice
+
+Dtrees <- duplicated(NurseryData[c("Monitoring Session", "Propagule ID")]) | duplicated(NurseryData[c("Monitoring Session","Propagule ID")], fromLast = TRUE)
+
+# Create a dataframe with only the duplicated rows
+NurseryDupes <- NurseryData[Dtrees, ]
+
+
+# View the result
+print(duplicates_df)
 
 
 ```
+
+
 
