@@ -9,7 +9,7 @@ editor_options:
 
 Test Committ
 
-Exponential growth model 
+Kayla Reccomends Running an Exponential growth model for each treatment and comparing the rate constants between them
 
 Below code chunk
 
@@ -25,13 +25,16 @@ library(tidyverse)
 library(plotrix)
 
 #import data 
-ContMon <- read_excel("data/Container Experiment Outplant Extension (CLEANED).xlsx", 
+ContMon <- read_excel("Kaitlin Container Experiment Analysis/data/Container Experiment Outplant Extension (CLEANED).xlsx", 
     col_types = c("numeric", "numeric", "numeric", 
         "date", "text", "text", "text", "numeric", 
         "numeric", "numeric", "numeric", 
         "numeric", "text", "text", "text", 
         "text", "numeric", "numeric", "numeric", 
-        "text", "text"))
+        "text", "text"))#Kaitlin Note: this will not run unless you change the file path to where the data lives in your drive
+
+
+
 #this is telling the class of the columns in the dataframe while importing, did this because it was making the orange field tag ID a logical instead of numeric
 
 length(unique(ContMon$OriginalPropID))
@@ -242,7 +245,7 @@ library(tidyverse)
 library(patchwork)
 
 #this is the intake data for the propagules
-Setup <- read_csv("data/ContainerSetupData.csv")
+Setup <- read_csv("Kaitlin Container Experiment Analysis/data/ContainerSetupData.csv")#change this file path to where you put the data
 
 
 #rename total length so can distinguish between intake and total length for monitoring 
@@ -674,7 +677,7 @@ library(readr)
 library(lubridate)
 
 #input cleaned datasheet, all nursery monitoring data 
-NurseryData <- read_csv("data/NurseryMonitoring.csv")
+NurseryData <- read_csv("Kaitlin Container Experiment Analysis/data/NurseryMonitoring.csv")
 
 #look at the structure of the dataframe and make some changes
 str(NurseryData)
